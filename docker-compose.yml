@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:alpine
+    container_name: go_session_auth
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=goSessionAuthU
+      - POSTGRES_PASSWORD=goSessionAuthP
+      - POSTGRES_DB=go_session_auth
+    volumes:
+      - go_session_data:/var/lib/postgresql/data
+    
+volumes:
+  go_session_data:
