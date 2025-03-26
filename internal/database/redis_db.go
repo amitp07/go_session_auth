@@ -3,11 +3,16 @@ package database
 import (
 	"context"
 	"fmt"
+	"session-auth/internal/utils"
 
 	"github.com/redis/go-redis/v9"
 )
 
-func SetupRedis() *redis.Client {
+type RedisClient struct {
+	db *redis.Client
+}
+
+func SetupRedis() *RedisClient {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "go_session_store",
@@ -20,5 +25,30 @@ func SetupRedis() *redis.Client {
 
 	fmt.Printf("Msg: %s\n", "Connection to Redis is successful")
 
-	return rdb
+	return &RedisClient{db: rdb}
+}
+
+func (r *RedisClient) Set(val string) (string, error) {
+
+	key, err := utils.GenerateRadomId(16)
+
+	if err != nil {
+		return "", err
+	}
+
+	if err := r.db.Set(context.TODO(), key, val, -1).Err(); err != nil {
+		return "", nil
+	}
+
+	return key, nil
+}
+
+func (r *RedisClient) Get(key string) string {
+	res, err := r.db.Get(context.TODO(), key).Result()
+
+	if err != nil {
+		return ""
+	}
+
+	return res
 }

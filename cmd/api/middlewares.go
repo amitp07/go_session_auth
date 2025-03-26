@@ -15,7 +15,7 @@ func (a *application) sessionAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		user := a.config.sessionStore.GetSession(cookie.Value)
+		user := a.config.redisClient.Get(cookie.Value)
 
 		fmt.Printf("user %s\n", user)
 

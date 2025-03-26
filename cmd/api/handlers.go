@@ -84,7 +84,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionId, err := app.config.sessionStore.CreateSession(user.Username)
+	sessionId, err := app.config.redisClient.Set(user.Username)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

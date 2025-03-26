@@ -5,9 +5,7 @@ import (
 	"net/http"
 	"session-auth/internal/data"
 	"session-auth/internal/database"
-	"session-auth/internal/sessions"
 
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -17,9 +15,8 @@ type application struct {
 }
 
 type config struct {
-	db           *gorm.DB
-	redisClient  *redis.Client
-	sessionStore *sessions.SessionStore
+	db          *gorm.DB
+	redisClient *database.RedisClient
 }
 
 func main() {
@@ -29,9 +26,8 @@ func main() {
 
 	// init config
 	cfg := &config{
-		db:           db,
-		redisClient:  redisClient,
-		sessionStore: sessions.NewSessionStore(),
+		db:          db,
+		redisClient: redisClient,
 	}
 	//init app
 	app := application{
