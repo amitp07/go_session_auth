@@ -24,6 +24,12 @@ func main() {
 	db := database.Setup()
 	redisClient := database.SetupRedis()
 
+	//seed for non prod env
+	err := database.SeedDB(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// init config
 	cfg := &config{
 		db:          db,

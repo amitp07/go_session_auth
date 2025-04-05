@@ -22,14 +22,13 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := app.models.CreateUser(user)
+	err = app.models.CreateUser(user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	res := dto.UserResponse{
-		ID:       id,
 		Username: user.Username,
 	}
 	json, err := json.Marshal(res)

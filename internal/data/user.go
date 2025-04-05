@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type User struct {
@@ -13,27 +14,45 @@ type User struct {
 	Username  string       `json:"username" gorm:"column:user_name;unique;not null;"`
 	Password  string       `json:"password" gorm:"not null"`
 	Groups    []UserGroups `json:"groups" gorm:"many2many:user_group_members"`
+	Roles     []Role       `json:"roles" gorm:"many2many:users_roles"`
 	CreatedAt time.Time    `json:"created_at" gorm:"default:NOW();"`
 	UpdatedAt time.Time    `json:"updated_at" gorm:"default:NOW();"`
 }
 
-func (d *Data) CreateUser(u dto.UserRequest) (uuid.UUID, error) {
-	password, err := utils.HashPassword(u.Password)
+func (d *Data) CreateUser(u dto.UserRequest) error {
 
-	if err != nil {
-		return uuid.Nil, err
-	}
+	return d.db.Transaction(func(tx *gorm.DB) error {
 
-	user := User{
-		Username: u.Username,
-		Password: password,
-	}
-	res := d.db.Create(&user)
-	if res.Error != nil {
-		return uuid.Nil, res.Error
-	}
+		password, err := utils.HashPassword(u.Password)
 
-	return user.ID, nil
+		if err != nil {
+			return err
+		}
+
+		var role Role
+		if err := tx.Where(Role{Name: "reader"}).First(&role).Error; err != nil {
+			return err
+		}
+
+		var group UserGroups
+		if err := tx.Where(UserGroups{Name: "Reader"}).Scan(&group).Error; err != nil {
+			return err
+		}
+
+		user := User{
+			Username: u.Username,
+			Password: password,
+			Roles:    []Role{role},
+			Groups:   []UserGroups{group},
+		}
+
+		if err := tx.Create(&user).Error; err != nil {
+			return err
+		}
+
+		return nil
+
+	})
 
 }
 
