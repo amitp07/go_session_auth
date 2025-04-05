@@ -24,6 +24,7 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 
 	err = app.models.CreateUser(user)
 	if err != nil {
+		fmt.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

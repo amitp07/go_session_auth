@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"session-auth/internal/dto"
 	"session-auth/internal/utils"
 	"time"
@@ -10,13 +11,13 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID    `json:"id" gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	Username  string       `json:"username" gorm:"column:user_name;unique;not null;"`
-	Password  string       `json:"password" gorm:"not null"`
-	Groups    []UserGroups `json:"groups" gorm:"many2many:user_group_members"`
-	Roles     []Role       `json:"roles" gorm:"many2many:users_roles"`
-	CreatedAt time.Time    `json:"created_at" gorm:"default:NOW();"`
-	UpdatedAt time.Time    `json:"updated_at" gorm:"default:NOW();"`
+	ID        uuid.UUID   `json:"id" gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	Username  string      `json:"username" gorm:"unique;not null;"`
+	Password  string      `json:"password" gorm:"not null"`
+	Groups    []UserGroup `json:"groups" gorm:"many2many:user_group_members"`
+	Roles     []Role      `json:"roles" gorm:"many2many:users_roles"`
+	CreatedAt time.Time   `json:"created_at" gorm:"default:NOW();"`
+	UpdatedAt time.Time   `json:"updated_at" gorm:"default:NOW();"`
 }
 
 func (d *Data) CreateUser(u dto.UserRequest) error {
@@ -31,23 +32,23 @@ func (d *Data) CreateUser(u dto.UserRequest) error {
 
 		var role Role
 		if err := tx.Where(Role{Name: "reader"}).First(&role).Error; err != nil {
-			return err
+			return fmt.Errorf("role error %w", err)
 		}
 
-		var group UserGroups
-		if err := tx.Where(UserGroups{Name: "Reader"}).Scan(&group).Error; err != nil {
-			return err
+		var group UserGroup
+		if err := tx.Where(UserGroup{Name: "reader"}).First(&group).Error; err != nil {
+			return fmt.Errorf("group error %w", err)
 		}
 
 		user := User{
 			Username: u.Username,
 			Password: password,
 			Roles:    []Role{role},
-			Groups:   []UserGroups{group},
+			Groups:   []UserGroup{group},
 		}
 
 		if err := tx.Create(&user).Error; err != nil {
-			return err
+			return fmt.Errorf("create error %w", err)
 		}
 
 		return nil

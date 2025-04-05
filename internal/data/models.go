@@ -7,7 +7,7 @@ type Data struct {
 	User       *User
 	Permission *Permission
 	Role       *Role
-	UserGroups *UserGroups
+	UserGroup  *UserGroup
 }
 
 func NewModels(db *gorm.DB) *Data {
