@@ -22,7 +22,7 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = app.models.CreateUser(user)
+	err = app.models.CreateUserWithGroup(user, "")
 	if err != nil {
 		fmt.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)

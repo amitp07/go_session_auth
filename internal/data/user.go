@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type User struct {
@@ -20,40 +19,90 @@ type User struct {
 	UpdatedAt time.Time   `json:"updated_at" gorm:"default:NOW();"`
 }
 
-func (d *Data) CreateUser(u dto.UserRequest) error {
+func (d *Data) CreateUserWithGroup(u dto.UserRequest, groupName string) error {
+	tx := d.db.Begin()
 
-	return d.db.Transaction(func(tx *gorm.DB) error {
-
-		password, err := utils.HashPassword(u.Password)
-
-		if err != nil {
-			return err
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
 		}
+	}()
+	password, err := utils.HashPassword(u.Password)
 
-		var role Role
-		if err := tx.Where(Role{Name: "reader"}).First(&role).Error; err != nil {
-			return fmt.Errorf("role error %w", err)
+	if err != nil {
+		return err
+	}
+
+	var group UserGroup
+
+	if groupName == "" {
+		groupName = "reader"
+	}
+	if err := tx.Where(UserGroup{Name: groupName}).First(&group).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Create(&User{
+		Username: u.Username,
+		Password: password,
+		Groups:   []UserGroup{group},
+	}).Error
+
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func (d *Data) CreateUserWithRole(u dto.UserRequest) error {
+
+	tx := d.db.Begin()
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
 		}
+	}()
 
-		var group UserGroup
-		if err := tx.Where(UserGroup{Name: "reader"}).First(&group).Error; err != nil {
-			return fmt.Errorf("group error %w", err)
-		}
+	password, err := utils.HashPassword(u.Password)
 
-		user := User{
-			Username: u.Username,
-			Password: password,
-			Roles:    []Role{role},
-			Groups:   []UserGroup{group},
-		}
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
-		if err := tx.Create(&user).Error; err != nil {
-			return fmt.Errorf("create error %w", err)
-		}
+	var role Role
+	if err := tx.Where(Role{Name: "reader"}).First(&role).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("role error %w", err)
+	}
 
-		return nil
+	user := User{
+		Username: u.Username,
+		Password: password,
+		Roles:    []Role{role},
+	}
 
-	})
+	if err := tx.Create(&user).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("create error %w", err)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
 
 }
 
