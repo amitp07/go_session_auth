@@ -10,13 +10,17 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID   `json:"id" gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	Username  string      `json:"username" gorm:"unique;not null;"`
-	Password  string      `json:"password" gorm:"not null"`
-	Groups    []UserGroup `json:"groups" gorm:"many2many:user_group_members"`
-	Roles     []Role      `json:"roles" gorm:"many2many:users_roles"`
-	CreatedAt time.Time   `json:"created_at" gorm:"default:NOW();"`
-	UpdatedAt time.Time   `json:"updated_at" gorm:"default:NOW();"`
+	ID            uuid.UUID   `json:"id" gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	Username      string      `json:"username" gorm:"unique;not null;"`
+	Password      string      `json:"password" gorm:"not null"`
+	Email         string      `json:"email" gorm:"not null;unique;"`
+	MfaEnabled    bool        `json:"mfaEnabled" gorm:"column:mfa_enabled;default:false;"`
+	EmailVerified bool        `json:"emailVerified" gorm:"column:email_verifed;default:false"`
+	Enabled       bool        `json:"enabled" gorm:"default:true"`
+	Groups        []UserGroup `json:"groups" gorm:"many2many:user_group_members"`
+	Roles         []Role      `json:"roles" gorm:"many2many:users_roles"`
+	CreatedAt     time.Time   `json:"created_at" gorm:"default:NOW();"`
+	UpdatedAt     time.Time   `json:"updated_at" gorm:"default:NOW();"`
 }
 
 func (d *Data) CreateUserWithGroup(u dto.UserRequest, groupName string) error {
