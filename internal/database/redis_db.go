@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"session-auth/internal/utils"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -28,16 +30,30 @@ func SetupRedis() *RedisClient {
 	return &RedisClient{db: rdb}
 }
 
-func (r *RedisClient) Set(val string) (string, error) {
-
+func (r *RedisClient) SetSession(val interface{}) (string, error) {
+	// generate random uuid for session key
 	key, err := utils.GenerateRadomId(16)
 
 	if err != nil {
 		return "", err
 	}
 
+	key = "session:" + key
+
 	if err := r.db.Set(context.TODO(), key, val, -1).Err(); err != nil {
+		fmt.Println("Error in setting session to redis", err.Error())
 		return "", nil
+	}
+
+	return key, nil
+}
+
+func (r *RedisClient) SetOtp(username, otp string) (string, error) {
+	key := "mfa:" + uuid.NewString()
+	err := r.db.Set(context.TODO(), key, otp, 5*time.Minute).Err()
+
+	if err != nil {
+		return "", err
 	}
 
 	return key, nil
