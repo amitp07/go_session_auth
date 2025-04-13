@@ -51,6 +51,7 @@ func (d *Data) CreateUserWithGroup(u dto.UserRequest, groupName string) error {
 	err = tx.Create(&User{
 		Username: u.Username,
 		Password: password,
+		Email:    u.Email,
 		Groups:   []UserGroup{group},
 	}).Error
 
@@ -111,7 +112,7 @@ func (d *Data) CreateUserWithRole(u dto.UserRequest) error {
 }
 
 func (d *Data) GetAllUsers(users *[]User) error {
-	err := d.db.Find(users).Error
+	err := d.db.Preload("Groups").Preload("Groups.Roles").Find(users).Error
 
 	if err != nil {
 		return err

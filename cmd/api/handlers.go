@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// handler to register new user
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
 	var user dto.UserRequest
 	encoder := json.NewDecoder(r.Body)
@@ -42,6 +43,7 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
+// Dummy handle to simulate protected route, this should be removed before moving to prod
 func (app *application) getAllUsers(w http.ResponseWriter, r *http.Request) {
 
 	var users []data.User
@@ -57,6 +59,7 @@ func (app *application) getAllUsers(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
+// handler to take the sign-in requests
 func (app *application) login(w http.ResponseWriter, r *http.Request) {
 	var userReq dto.UserRequest
 	err := json.NewDecoder(r.Body).Decode(&userReq)
@@ -82,15 +85,21 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 
 	otp := utils.GenerateOtp()
 
+	redisVal, err := json.Marshal(dto.MfaSession{
+		Username: user.Username,
+		Otp:      otp,
+	})
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	sessionId, err := app.config.redisClient.SetOtp(user.Username, otp)
+	sessionId, err := app.config.redisClient.SetOtp(redisVal)
 
 	if err != nil {
 		fmt.Printf("Error:mfa_redis_set: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -103,31 +112,9 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Write([]byte("otp is: " + otp))
-
-	// res, err := json.Marshal(user) if err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// sessionId, err := app.config.redisClient.Set(user.Username)
-
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// http.SetCookie(w, &http.Cookie{
-	// 	Name:     "session_id",
-	// 	Value:    sessionId,
-	// 	Path:     "/",
-	// 	Expires:  time.Now().Add(10 * time.Minute),
-	// 	SameSite: http.SameSiteStrictMode,
-	// })
-
-	// w.Write(res)
-
 }
 
+// handler to verify the OTP
 func (app *application) verifyOtp(w http.ResponseWriter, r *http.Request) {
 	otp := chi.URLParam(r, "otp")
 
@@ -143,16 +130,29 @@ func (app *application) verifyOtp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("cookie %s", cookie.Value)
+	sessionOtpStr := app.config.redisClient.Get(cookie.Value)
 
-	sessionOtp := app.config.redisClient.Get(cookie.Value)
+	var sessionOtp dto.MfaSession
+	err = json.Unmarshal([]byte(sessionOtpStr), &sessionOtp)
 
-	if sessionOtp != otp {
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if otp != sessionOtp.Otp {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	session, err := app.config.redisClient.SetSession("user_name_one")
+	err = app.config.redisClient.Delete(cookie.Value)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	session, err := app.config.redisClient.SetSession(sessionOtp.Username)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

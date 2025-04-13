@@ -30,7 +30,7 @@ func SetupRedis() *RedisClient {
 	return &RedisClient{db: rdb}
 }
 
-func (r *RedisClient) SetSession(val interface{}) (string, error) {
+func (r *RedisClient) SetSession(val string) (string, error) {
 	// generate random uuid for session key
 	key, err := utils.GenerateRadomId(16)
 
@@ -48,9 +48,9 @@ func (r *RedisClient) SetSession(val interface{}) (string, error) {
 	return key, nil
 }
 
-func (r *RedisClient) SetOtp(username, otp string) (string, error) {
+func (r *RedisClient) SetOtp(val []byte) (string, error) {
 	key := "mfa:" + uuid.NewString()
-	err := r.db.Set(context.TODO(), key, otp, 5*time.Minute).Err()
+	err := r.db.Set(context.TODO(), key, val, 5*time.Minute).Err()
 
 	if err != nil {
 		return "", err
@@ -67,4 +67,8 @@ func (r *RedisClient) Get(key string) string {
 	}
 
 	return res
+}
+
+func (r *RedisClient) Delete(key string) error {
+	return r.db.Del(context.TODO(), key).Err()
 }
