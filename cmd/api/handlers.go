@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"session-auth/internal/data"
 	"session-auth/internal/dto"
+	"session-auth/internal/services"
 	"session-auth/internal/utils"
 	"time"
 
@@ -111,7 +112,16 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	w.Write([]byte("otp is: " + otp))
+	emailCfg := services.OtpEmailConfig()
+
+	if err = emailCfg.Send(user.Email, otp); err != nil {
+		fmt.Printf("could not send otp %s\n", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("otp send successfully."))
+
 }
 
 // handler to verify the OTP
